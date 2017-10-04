@@ -3,8 +3,6 @@
 #kaggle 2017 tsa challenge
 """this file loads image data from the tsa challenge on Kaggle.com and segments it"""
 
-
-
 from __future__ import print_function
 from __future__ import division
 import numpy as np
@@ -15,18 +13,50 @@ import pandas as pd
 import seaborn as sns
 import scipy.stats as stats
 import click
-
+import pyximport; pyximport.install()
+import video_util
+from PIL import Image
 
 # constants
 COLORMAP = 'pink'
 
-#APS_FILE_NAME = 'tsa_datasets/stage1/aps/00360f79fd6e02781457eda48f85da90.aps'
-#BODY_ZONES = 'tsa_datasets/stage1/body_zones.png'
-#THREAT_LABELS = 'tsa_datasets/stage1/stage1_labels.csv'
 
-APS_FILE_NAME = '/stash/tlab/madisen2/2017kaggle/TSA_Challenge/stage1/aps/00360f79fd6e02781457eda48f85da90.aps'
-BODY_ZONES = '/stash/tlab/madisen2/2017kaggle/TSA_Challenge/stage1/body_zones.png'
-THREAT_LABELS = '/stash/tlab/madisen2/2017kaggle/TSA_Challenge/stage1/stage1_labels.csv'
+APS_FILE_NAME = '/stash/tlab/datasets/2017KaggleTsa/stage1/aps/00360f79fd6e02781457eda48f85da90.aps'
+BODY_ZONES = '/stash/tlab/datasets/2017KaggleTsa/stage1/body_zones.png'
+THREAT_LABELS = '/stash/tlab/datasets/2017KaggleTsa/stage1/stage1_labels.csv'
+
+#____________________________________________________________________________#
+
+def list_files():
+    """Returns a list of the file names from the path provided."""
+
+    path="/stash/tlab/datasets/2017KaggleTsa/stage1/aps"
+    file_names=os.listdir(path)
+    file_names=[
+            os.path.join(path,p)
+            for p in file_names]
+
+    return file_names
+
+
+
+def to_rgb(file_name):
+
+    data=read_data(file_name)
+    data=data.astype('uint8')
+
+    return data
+
+
+def animation_files(files):
+
+    file_list=[]
+    for i in files:
+        file_list.append([to_rgb(i)])
+
+
+    return file_list
+
 
 
 
@@ -81,6 +111,7 @@ sector_crop_list = [[ 50,  50, 250, 250], # sector 1
    ]
 
 # Each element in the zone_slice_list contains the sector to use in the call to roi()
+
 zone_slice_list = [ [ # threat zone 1
                     sector01_pts, sector01_pts, sector01_pts, None,
                     None, None, sector03_pts, sector03_pts,
@@ -184,6 +215,7 @@ zone_slice_list = [ [ # threat zone 1
                     sector05_pts, sector05_pts, sector05_pts, sector05_pts ] ]
 
 # Each element in the zone_slice_list contains the sector to use in the call to roi()
+
 zone_crop_list =  [ [ # threat zone 1
                     sector_crop_list[0], sector_crop_list[0], sector_crop_list[0], None,
                     None, None, sector_crop_list[2], sector_crop_list[2],
@@ -399,12 +431,14 @@ def read_header(infile):
 
     return h
 
-#unit test ----------------------------------
+#test --------------------------------------------------------------------
+
 header = read_header(APS_FILE_NAME)
 
 for data_item in sorted(header):
     print ('{} -> {}'.format(data_item, header[data_item]))
 
+#end test-----------------------------------------------------------------
 
 
 #__________________________________________________________________________#
@@ -472,20 +506,23 @@ def read_data(infile):
         else:
             return real, imag
 
-#unit test ----------------------------------
-#d = read_data(APS_FILE_NAME)
+#test ------------------------------------------------------------------------
+"""
+d = read_data(APS_FILE_NAME)
+"""
+#end test---------------------------------------------------------------------
 
 #________________________________________________________________________#
 
 
-#----------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # get_hit_rate_stats(infile):  gets the threat probabilities in a useful form
 #
 # infile:                      labels csv file
 #
 # returns:                     a dataframe of the summary hit probabilities
 #
-#----------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 
 def get_hit_rate_stats(infile):
     # pull the labels for a given patient
@@ -503,58 +540,70 @@ def get_hit_rate_stats(infile):
 
     return df_summary
 
-# unit test -----------------------
-#df = get_hit_rate_stats(THREAT_LABELS)
+#test -----------------------------------------------------------------------
+"""
+df = get_hit_rate_stats(THREAT_LABELS)
 #df.head()
+"""
+#end test--------------------------------------------------------------------
 
 #________________________________________________________________________#
-#------------------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
 # chart_hit_rate_stats(df_summary): charts threat probabilities in desc order by zone
 #
-# df_summary:                 a dataframe like that returned from get_hit_rate_stats(...)
+# df_summary:   a dataframe like that returned from get_hit_rate_stats(...)
 #
-#-------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 
 def chart_hit_rate_stats(df_summary):
     fig, ax = plt.subplots(figsize=(15,5))
     sns.barplot(ax=ax, x=df_summary['Zone'], y=df_summary['pct']*100)
 
 
-# unit test ------------------
-#chart_hit_rate_stats(df)
+#test ------------------------------------------------------------------------
+"""
+chart_hit_rate_stats(df)
+"""
+#end test---------------------------------------------------------------------
 
 #__________________________________________________________________________#
-#------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------
 # print_hit_rate_stats(df_summary): lists threat probabilities by zone
 #
 # df_summary:               a dataframe like that returned from get_hit_rate_stats(...)
 #
-#------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 
 def print_hit_rate_stats(df_summary):
 # print the table of values readbly
     print ('{:6s}   {:>4s}   {:6s}'.format('Zone', 'Hits', 'Pct %'))
     print ('------   ----- ----------')
     for zone in df_summary.iterrows():
-        print ('{:6s}   {:>4d}   {:>6.3f}%'.format(zone[0], np.int16(zone[1]['sum']), zone[1]['pct']*100))
+        print ('{:6s}   {:>4d}   {:>6.3f}%'.format(zone[0],
+            np.int16(zone[1]['sum']), zone[1]['pct']*100))
     print ('------   ----- ----------')
-    print ('{:6s}   {:>4d}   {:6.3f}%'.format('Total ', np.int16(df_summary['sum'].sum(axis=0)),
+    print ('{:6s}   {:>4d}   {:6.3f}%'.format('Total ',
+        np.int16(df_summary['sum'].sum(axis=0)),
     ( df_summary['sum'].sum(axis=0) / df_summary['count'].sum(axis=0))*100))
 
-# unit test -----------------------
-#print_hit_rate_stats(df)
-#___________________________________________________________________________#
+#test ------------------------------------------------------------------------
+"""
+print_hit_rate_stats(df)
+"""
+#end test---------------------------------------------------------------------
 
-#----------------------------------------------------------------------------------------
+#___________________________________________________________________________#
+#-----------------------------------------------------------------------------
 # def get_subject_labels(infile, subject_id): lists threat probabilities by zone
 #
-# infile:                          labels csv file
+# infile:            labels csv file
 #
-# subject_id:                      the individual you want the threat zone labels for
+# subject_id:        the individual you want the threat zone labels for
 #
-# returns:                         a df with the list of zones and contraband (0 or 1)
+# returns:           a df with the list of zones and contraband (0 or 1)
 #
-#---------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 
 def get_subject_labels(infile, subject_id):
 
@@ -570,16 +619,18 @@ def get_subject_labels(infile, subject_id):
 
 
 
-# unit test ----------------------------------------------------------------------
-#print(get_subject_labels(THREAT_LABELS, '00360f79fd6e02781457eda48f85da90'))
+#test ----------------------------------------------------------------------
+"""
+print(get_subject_labels(THREAT_LABELS, '00360f79fd6e02781457eda48f85da90'))
+"""
+#end test-------------------------------------------------------------------
 
 #___________________________________________________________________________#
-
-#----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # plot_image_set(infile):  takes an aps file and shows all 16 90 degree shots
 #
 # infile:                  an aps file
-#----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def plot_image_set(infile):
 
     # read in the aps file, it comes in as shape(512, 620, 16)
@@ -600,19 +651,20 @@ def plot_image_set(infile):
 
     print('Done!')
 
-# unit test ----------------------------------
-#plot_image_set(APS_FILE_NAME)
+#test -----------------------------------------------------------------------
+
+plot_image_set(APS_FILE_NAME)
+
+#end test---------------------------------------------------------------------
+
 #___________________________________________________________________________#
-
-
-
-#----------------------------------------------------------------------------------
-# get_single_image(infile, nth_image):  returns the nth image from the image stack
+#-----------------------------------------------------------------------------
+# get_single_image(infile, nth_image):returns the nth image from the image stack
 #
 # infile:                              an aps file
 #
 # returns:                             an image
-#----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 
 def get_single_image(infile, nth_image):
 
@@ -626,27 +678,30 @@ def get_single_image(infile, nth_image):
 
 
 
-# unit test ---------------------------------------------------------------
-#an_img = get_single_image(APS_FILE_NAME, 0)
+#test -----------------------------------------------------------------------
+"""
+an_img = get_single_image(APS_FILE_NAME, 0)
 
-#fig, axarr = plt.subplots(nrows=1, ncols=2, figsize=(20, 5))
+fig, axarr = plt.subplots(nrows=1, ncols=2, figsize=(20, 5))
 
-#axarr[0].imshow(an_img, cmap=COLORMAP)
-#plt.subplot(122)
-#plt.hist(an_img.flatten(), bins=256, color='c')
-#plt.xlabel("Raw Scan Pixel Value")
-#plt.ylabel("Frequency")
-#plt.show()
+axarr[0].imshow(an_img, cmap=COLORMAP)
+plt.subplot(122)
+plt.hist(an_img.flatten(), bins=256, color='c')
+plt.xlabel("Raw Scan Pixel Value")
+plt.ylabel("Frequency")
+plt.show()
+"""
+#end test---------------------------------------------------------------------
 
 #_______________________________________________________________________#
-
-#----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # convert_to_grayscale(img):           converts a ATI scan to grayscale
 #
 # infile:                              an aps file
 #
 # returns:                             an image
-#----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
 def convert_to_grayscale(img):
     # scale pixel values to grayscale
     base_range = np.amax(img) - np.amin(img)
@@ -655,20 +710,23 @@ def convert_to_grayscale(img):
 
     return np.uint8(img_rescaled)
 
-# unit test ------------------------------------------
-#img_rescaled = convert_to_grayscale(an_img)
+#test -------------------------------------------------------------------------
+"""
+img_rescaled = convert_to_grayscale(an_img)
 
-#fig, axarr = plt.subplots(nrows=1, ncols=2, figsize=(20, 5))
+fig, axarr = plt.subplots(nrows=1, ncols=2, figsize=(20, 5))
 
-#axarr[0].imshow(img_rescaled, cmap=COLORMAP)
-#plt.subplot(122)
-#plt.hist(img_rescaled.flatten(), bins=256, color='c')
-#plt.xlabel("Grayscale Pixel Value")
-#plt.ylabel("Frequency")
-#plt.show()
+axarr[0].imshow(img_rescaled, cmap=COLORMAP)
+plt.subplot(122)
+plt.hist(img_rescaled.flatten(), bins=256, color='c')
+plt.xlabel("Grayscale Pixel Value")
+plt.ylabel("Frequency")
+plt.show()
+"""
+#end test---------------------------------------------------------------------
+
 
 #_____________________________________________________________________#
-
 #-------------------------------------------------------------------------------
 # spread_spectrum(img):        applies a histogram equalization transformation
 #
@@ -686,21 +744,23 @@ def spread_spectrum(img):
 
     return img
 
-# unit test ------------------------------------------
-#img_high_contrast = spread_spectrum(img_rescaled)
+#test ------------------------------------------------------------------------
+"""
+img_high_contrast = spread_spectrum(img_rescaled)
 
-#fig, axarr = plt.subplots(nrows=1, ncols=2, figsize=(20, 5))
+fig, axarr = plt.subplots(nrows=1, ncols=2, figsize=(20, 5))
 
-#axarr[0].imshow(img_high_contrast, cmap=COLORMAP)
-#plt.subplot(122)
-#plt.hist(img_high_contrast.flatten(), bins=256, color='c')
-#plt.xlabel("Grayscale Pixel Value")
-#plt.ylabel("Frequency")
-#plt.show()
+axarr[0].imshow(img_high_contrast, cmap=COLORMAP)
+plt.subplot(122)
+plt.hist(img_high_contrast.flatten(), bins=256, color='c')
+plt.xlabel("Grayscale Pixel Value")
+plt.ylabel("Frequency")
+plt.show()
+"""
+#end test---------------------------------------------------------------------
 
 #________________________________________________________________________#
-
-#-----------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # roi(img, vertices):              uses vertices to mask the image
 #
 # img:                             the image to be masked
@@ -708,7 +768,7 @@ def spread_spectrum(img):
 # vertices:                        a set of vertices that define the region of interest
 #
 # returns:                         a masked image
-#-----------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 def roi(img, vertices):
 
     # blank mask
@@ -723,23 +783,26 @@ def roi(img, vertices):
 
     return masked
 
-# unit test -----------------------------------------------------------------
-#fig, axarr = plt.subplots(nrows=4, ncols=4, figsize=(10,10))
-#
-#i = 0
-#for row in range(4):
-#    for col in range(4):
-#        an_img = get_single_image(APS_FILE_NAME, i)
-#        img_rescaled = convert_to_grayscale(an_img)
-#        img_high_contrast = spread_spectrum(img_rescaled)
-#        if zone_slice_list[0][i] is not None:
-#            masked_img = roi(img_high_contrast, zone_slice_list[0][i])
-#            resized_img = cv2.resize(masked_img, (0,0), fx=0.1, fy=0.1)
-#            axarr[row, col].imshow(resized_img, cmap=COLORMAP)
-#        i += 1
-#________________________________________________________________________#
+#test ------------------------------------------------------------------------
+"""
+fig, axarr = plt.subplots(nrows=4, ncols=4, figsize=(10,10))
 
-#-----------------------------------------------------------------------------------------
+i = 0
+for row in range(4):
+    for col in range(4):
+        an_img = get_single_image(APS_FILE_NAME, i)
+        img_rescaled = convert_to_grayscale(an_img)
+        img_high_contrast = spread_spectrum(img_rescaled)
+        if zone_slice_list[0][i] is not None:
+            masked_img = roi(img_high_contrast, zone_slice_list[0][i])
+            resized_img = cv2.resize(masked_img, (0,0), fx=0.1, fy=0.1)
+            axarr[row, col].imshow(resized_img, cmap=COLORMAP)
+        i += 1
+"""
+#end test---------------------------------------------------------------------
+
+#________________________________________________________________________#
+#-----------------------------------------------------------------------------
 # crop(img, crop_list):                uses vertices to mask the image
 #
 # img:                                 the image to be cropped
@@ -747,7 +810,7 @@ def roi(img, vertices):
 # crop_list:                           a crop_list entry with [x , y, width, height]
 #
 # returns:                             a cropped image
-#-----------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def crop(img, crop_list):
 
     x_coord = crop_list[0]
@@ -758,25 +821,28 @@ def crop(img, crop_list):
 
     return cropped_img
 
-# unit test -----------------------------------------------------------------
+#test -------------------------------------------------------------------------
+"""
+fig, axarr = plt.subplots(nrows=4, ncols=4, figsize=(10,10))
 
-#fig, axarr = plt.subplots(nrows=4, ncols=4, figsize=(10,10))
-#
-#i = 0
-#for row in range(4):
-#    for col in range(4):
-#        an_img = get_single_image(APS_FILE_NAME, i)
-#        img_rescaled = convert_to_grayscale(an_img)
-#        img_high_contrast = spread_spectrum(img_rescaled)
-#        if zone_slice_list[0][i] is not None:
-#            masked_img = roi(img_high_contrast, zone_slice_list[0][i])
-#            cropped_img = crop(masked_img, zone_crop_list[0][i])
-#            resized_img = cv2.resize(cropped_img, (0,0), fx=0.1, fy=0.1)
-#            axarr[row, col].imshow(resized_img, cmap=COLORMAP)
-#        i += 1
+i = 0
+for row in range(4):
+    for col in range(4):
+        an_img = get_single_image(APS_FILE_NAME, i)
+        img_rescaled = convert_to_grayscale(an_img)
+        img_high_contrast = spread_spectrum(img_rescaled)
+        if zone_slice_list[0][i] is not None:
+            masked_img = roi(img_high_contrast, zone_slice_list[0][i])
+            cropped_img = crop(masked_img, zone_crop_list[0][i])
+            resized_img = cv2.resize(cropped_img, (0,0), fx=0.1, fy=0.1)
+            axarr[row, col].imshow(resized_img, cmap=COLORMAP)
+        i += 1
+"""
+
+#end test--------------------------------------------------------------------
+
 #_______________________________________________________________________#
-
-#------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # normalize(image): Take segmented tsa image and normalize pixel values to be
 #                   between 0 and 1
 #
@@ -784,7 +850,7 @@ def crop(img, crop_list):
 #
 # returns:         a normalized image
 #
-#------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 def normalize(image):
     MIN_BOUND = 0.0
@@ -795,19 +861,20 @@ def normalize(image):
     image[image<0] = 0.
     return image
 
-#unit test ---------------------
-#an_img = get_single_image(APS_FILE_NAME, 0)
-#img_rescaled = convert_to_grayscale(an_img)
-#img_high_contrast = spread_spectrum(img_rescaled)
-#masked_img = roi(img_high_contrast, zone_slice_list[0][0])
-#cropped_img = crop(masked_img, zone_crop_list[0][0])
-#normalized_img = normalize(cropped_img)
-#print ('Normalized: length:width -> {:d}:{:d}|mean={:f}'.format(len(normalized_img), len(normalized_img[0]), normalized_img.mean()))
-#print (' -> type ', type(normalized_img))
-#print (' -> shape', normalized_img.shape)
-#____________________________________________________________________________#
+#test -------------------------------------------------------------------------
+"""an_img = get_single_image(APS_FILE_NAME, 0)
+img_rescaled = convert_to_grayscale(an_img)
+img_high_contrast = spread_spectrum(img_rescaled)
+masked_img = roi(img_high_contrast, zone_slice_list[0][0])
+cropped_img = crop(masked_img, zone_crop_list[0][0])
+normalized_img = normalize(cropped_img)
+print ('Normalized: length:width -> {:d}:{:d}|mean={:f}'.format(len(normalized_img), len(normalized_img[0]), normalized_img.mean()))
+print (' -> type ', type(normalized_img))
+print (' -> shape', normalized_img.shape)"""
+#end test--------------------------------------------------------------------
 
-#-------------------------------------------------------------------------------------
+#____________________________________________________________________________#
+#------------------------------------------------------------------------------
 # zero_center(image): Shift normalized image data and move the range so it is 0 c
 #                     entered at the PIXEL_MEAN
 #
@@ -815,7 +882,7 @@ def normalize(image):
 #
 # returns:            a zero centered image
 #
-#-----------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def zero_center(image):
 
     PIXEL_MEAN = 0.014327
@@ -823,18 +890,24 @@ def zero_center(image):
     image = image - PIXEL_MEAN
     return image
 
-#unit test ---------------------
-#an_img = get_single_image(APS_FILE_NAME, 0)
-#img_rescaled = convert_to_grayscale(an_img)
-#img_high_contrast = spread_spectrum(img_rescaled)
-#masked_img = roi(img_high_contrast, zone_slice_list[0][0])
-#cropped_img = crop(masked_img, zone_crop_list[0][0])
-#normalized_img = normalize(cropped_img)
-#zero_centered_img = zero_center(normalized_img)
-#print ('Zero Centered: length:width -> {:d}:{:d}|mean={:f}'.format(len(zero_centered_img), len(zero_centered_img[0]), zero_centered_img.mean()))
-#print ('Conformed: Type ->', type(zero_centered_img), 'Shape ->', zero_centered_img.shape)
+#test -------------------------------------------------------------------------
+"""an_img = get_single_image(APS_FILE_NAME, 0)
+img_rescaled = convert_to_grayscale(an_img)
+img_high_contrast = spread_spectrum(img_rescaled)
+masked_img = roi(img_high_contrast, zone_slice_list[0][0])
+cropped_img = crop(masked_img, zone_crop_list[0][0])
+normalized_img = normalize(cropped_img)
+zero_centered_img = zero_center(normalized_img)
+print ('Zero Centered: length:width -> {:d}:{:d}|mean={:f}'.format(len(zero_centered_img), len(zero_centered_img[0]), zero_centered_img.mean()))
+print ('Conformed: Type ->', type(zero_centered_img), 'Shape ->', zero_centered_img.shape)
+#end test---------------------------------------------------------------------
+"""
 
-#_______________________________________________________________________#
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+
+#animation sequence
+
 
 
 
