@@ -22,8 +22,7 @@ def get_image_for_frame(i):
     print(r.mean())
     r=r.astype(np.double)
     print(r.shape)
-
-    r=r.flatten()
+    r=r[::-1,]
     #r=(test.get_single_image(files[0],0))[i].flatten()
     #r=r.astype(np.double)
     return r/r.max()
@@ -32,4 +31,4 @@ with video_util.VideoHelper("output.mp4", fps=3, frameSize=(width, height)) as v
     for i in range(num_frames):
         with vh.frame() as buffer:
             frameData = get_image_for_frame(i)
-            buffer.blit_flat_float_mono_as_alpha[:, :] = frameData.reshape((width*height,))
+            buffer.blit_flat_float_mono_as_alpha[:, :] = frameData.flatten()
