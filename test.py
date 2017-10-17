@@ -486,21 +486,24 @@ def zero_center(image):
 
 
 @click.command()
-#@click.option('--')
 #@click.option('--normalize')
+@click.option('--subject',prompt='Subject #: ')
+@click.option('--zone',prompt='Zone #: ')
 
-def main(**kwargs):
+
+def main(subject,zone):
     """Used for file framework"""
 
     files=list_files()
-    subject_0=files[0]
-    subject_0=read_data(subject_0).transpose()
+    subject=files[subject]
+    subject=read_data(subject).transpose()
     cropped_images=[]
 
-    for x in subject_0:
-        cropped_images.append(crop(x,1))
+    #for x in subject:
+     #   cropped_images.append([])
+      #  cropped_images.append(crop(x,zones.zone_crop_list[zone]))
 
-    pass
+    return 0
 
 if __name__ == '__main__':
     main()
