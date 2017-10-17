@@ -5,6 +5,27 @@ the 17 zones on a human body in this competition."""
 #maddie phillips
 #teuscher labs
 #10/12/2017
+from __future__ import print_function
+from __future__ import division
+import numpy as np
+import os
+from matplotlib import pyplot as plt
+import cv2
+import pandas as pd
+import seaborn as sns
+import scipy.stats as stats
+import click
+import pyximport; pyximport.install()
+import video_util
+from PIL import Image
+import test
+
+
+APS_FILE_NAME = '/stash/tlab/datasets/2017KaggleTsa/stage1/aps/00360f79fd6e02781457eda48f85da90.aps'
+BODY_ZONES = '/stash/tlab/datasets/2017KaggleTsa/stage1/body_zones.png'
+THREAT_LABELS = '/stash/tlab/datasets/2017KaggleTsa/stage1/stage1_labels.csv'
+
+
 
 # show the threat zones
 body_zones_img = plt.imread(BODY_ZONES)

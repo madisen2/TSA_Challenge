@@ -16,6 +16,7 @@ import click
 import pyximport; pyximport.install()
 import video_util
 from PIL import Image
+import zones
 
 # constants
 COLORMAP = 'pink'
@@ -25,7 +26,16 @@ APS_FILE_NAME = '/stash/tlab/datasets/2017KaggleTsa/stage1/aps/00360f79fd6e02781
 BODY_ZONES = '/stash/tlab/datasets/2017KaggleTsa/stage1/body_zones.png'
 THREAT_LABELS = '/stash/tlab/datasets/2017KaggleTsa/stage1/stage1_labels.csv'
 
+
+#class Model:
+ #   def fit(self, inputs, outputs):
+  #      self.params=lstsq
+   # def predict(self,inputs):
+        #return applying self.params to inputs
 #____________________________________________________________________________#
+
+
+
 
 def list_files():
     """Returns a list of the file names from the path provided."""
@@ -475,11 +485,21 @@ def zero_center(image):
 
 
 
-
-
 @click.command()
+#@click.option('--')
+#@click.option('--normalize')
+
 def main(**kwargs):
     """Used for file framework"""
+
+    files=list_files()
+    subject_0=files[0]
+    subject_0=read_data(subject_0).transpose()
+    cropped_images=[]
+
+    for x in subject_0:
+        cropped_images.append(crop(x,1))
+
     pass
 
 if __name__ == '__main__':
