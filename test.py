@@ -3,8 +3,6 @@
 #kaggle 2017 tsa challenge
 """this file loads image data from the tsa challenge on Kaggle.com and segments it"""
 
-from __future__ import print_function
-from __future__ import division
 import numpy as np
 import os
 from matplotlib import pyplot as plt
@@ -27,14 +25,19 @@ BODY_ZONES = '/stash/tlab/datasets/2017KaggleTsa/stage1/body_zones.png'
 THREAT_LABELS = '/stash/tlab/datasets/2017KaggleTsa/stage1/stage1_labels.csv'
 
 
-#class Model:
- #   def fit(self, inputs, outputs):
-  #      self.params=lstsq
-   # def predict(self,inputs):
-        #return applying self.params to inputs
+class Model:
+    def fit(self, inputs, outputs):
+        self.params=np.linalg.lstsq(inputs,outputs)
+        return 0
+    def predict(self,inputs):
+        return 0
 #____________________________________________________________________________#
 
+def get_subject_hash(infile):
 
+    subject_id=infile.split('/')[-1].split('.')[0]
+
+    return subject_id
 
 
 def list_files():
@@ -48,6 +51,13 @@ def list_files():
 
     return file_names
 
+def list_labels():
+
+    path="/stash/tlab/datasets/2017KaggleTsa/stage1/stage1_labels.csv"
+    df=pd.read_csv(path)
+    print(df)
+
+    return df
 
 
 def to_rgb(file_name):
@@ -254,7 +264,7 @@ def get_hit_rate_stats(infile):
     # Separate the zone and patient id into a df
     df['Subject'], df['Zone'] = df['Id'].str.split('_',1).str
     df = df[['Subject', 'Zone', 'Probability']]
-
+    df_summary=df['Probability']
     # make a df of the sums and counts by zone and calculate hit rate per zone, then sort high to low
     df_summary = df.groupby('Zone')['Probability'].agg(['sum','count'])
     df_summary['Zone'] = df_summary.index
@@ -262,7 +272,7 @@ def get_hit_rate_stats(infile):
     df_summary.sort_values('pct', axis=0, ascending= False, inplace=True)
 
     return df_summary
-
+   # return df
 
 #-----------------------------------------------------------------------------
 # chart_hit_rate_stats(df_summary): charts threat probabilities in desc order by zone
@@ -296,6 +306,29 @@ def print_hit_rate_stats(df_summary):
         np.int16(df_summary['sum'].sum(axis=0)),
     ( df_summary['sum'].sum(axis=0) / df_summary['count'].sum(axis=0))*100))
 
+#----------------------------------------------------------------------------
+#get_subject_zone_label(zone_num,df):
+
+#---------------------------------------------------------------------------
+
+def get_subject_zone_label(zone_num, df):
+
+    # Dict to convert a 0 based threat zone index to the text we need to look up the label
+    zone_index = {0: 'Zone1', 1: 'Zone2', 2: 'Zone3', 3: 'Zone4', 4: 'Zone5', 5: 'Zone6',
+                  6: 'Zone7', 7: 'Zone8', 8: 'Zone9', 9: 'Zone10', 10: 'Zone11', 11: 'Zone12',
+                  12: 'Zone13', 13: 'Zone14', 14: 'Zone15', 15: 'Zone16',
+                  16: 'Zone17'
+                 }
+    # get the text key from the dictionary
+    key = zone_index.get(zone_num)
+
+    # select the probability value and make the label
+    if df.loc[df['Zone'] == key]['Probability'].values[0] == 1:
+        # threat present
+        return [0,1]
+    else:
+        #no threat present
+        return [1,0]
 
 #-----------------------------------------------------------------------------
 # def get_subject_labels(infile, subject_id): lists threat probabilities by zone
@@ -486,22 +519,51 @@ def zero_center(image):
 
 
 @click.command()
-#@click.option('--normalize')
-@click.option('--subject',prompt='Subject #: ')
-@click.option('--zone',prompt='Zone #: ')
+@click.option('--normalize/--no-normalize', default=False)
+@click.option('--subject',default=0,help='Subject #: ')
+@click.option('--zone',default=0,help='Zone #: ')
 
 
-def main(subject,zone):
+def main(subject, zone, normalize):
     """Used for file framework"""
 
-    files=list_files()
-    subject=files[subject]
-    subject=read_data(subject).transpose()
-    cropped_images=[]
+    files=list_files()#open the list of files
+    subject_sample=files[0:10]#create an array of files, sample size 10
+    cropped_images=[]#initialize array
+    cropped_images_concatenated=[]
+    threat_labels=[]#initialize array
+    z=0
+    for x in subject_sample:
+        #below we loop and load the threat array
+        subject_hash=get_subject_hash(x)
+        df=get_subject_labels(THREAT_LABELS,subject_hash)
+        threat_labels.append(get_subject_zone_label(0,df))
 
-    #for x in subject:
-     #   cropped_images.append([])
-      #  cropped_images.append(crop(x,zones.zone_crop_list[zone]))
+        #below we loop and load the cropped images array
+        subject_collection=read_data(x).transpose()
+        for y in subject_collection:
+            cropped_images.append(crop(y,zones.zone_crop_list[0][0]))
+
+        #while z<len(cropped_images):
+         #   concatenate=cropped_images[z:10]
+          #  concatenate.join(
+
+
+   #ID=files[subject]
+    #subject_hash=get_subject_hash(ID)
+    #subject_collection=read_data(ID).transpose()
+    #threat_subject=get_subject_labels(THREAT_LABELS, ID)
+
+    #for x in subject_collection:
+     #   threat_labels.append(get_subject_zone_label(zone,subject_hash))
+
+    #for y in ID:
+     #   cropped_images.append(crop(y,zones.zone_crop_list[zone][0]))
+
+    print(len(threat_labels))
+    print(cropped_images)
+   # m = Model()
+    #m.fit(cropped_images, None)
 
     return 0
 
