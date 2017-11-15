@@ -529,25 +529,44 @@ def main(subject, zone, normalize):
 
     files=list_files()#open the list of files
     subject_sample=files[0:10]#create an array of files, sample size 10
-    cropped_images=[]#initialize array
+    cropped_images=([])#initialize array
     cropped_images_concatenated=[]
     threat_labels=[]#initialize array
-    z=0
+
     for x in subject_sample:
         #below we loop and load the threat array
-        subject_hash=get_subject_hash(x)
-        df=get_subject_labels(THREAT_LABELS,subject_hash)
-        threat_labels.append(get_subject_zone_label(0,df))
+        subject_hash=get_subject_hash(x)#returns subject ID
+        df=get_subject_labels(THREAT_LABELS,subject_hash)#retrieve threat label
+        threat_labels.append(get_subject_zone_label(0,df))#creates array of threat labels
 
         #below we loop and load the cropped images array
         subject_collection=read_data(x).transpose()
         for y in subject_collection:
-            cropped_images.append(crop(y,zones.zone_crop_list[0][0]))
+            cropped_images.append([crop(y,zones.zone_crop_list[0][1])])#using zone 0
+            #cropped_images.append(crop(y,zones.zone_crop_list[0][0]))
+    """
+    length=len(cropped_images)
+    k=0
+    count=0
+    cropped_images=np.asarray(cropped_images)
+    while count<length:
+        cropped_images[count]=cropped_images[count].flatten()
+        count=count+1
 
-        #while z<len(cropped_images):
-         #   concatenate=cropped_images[z:10]
-          #  concatenate.join(
+    while k<length-10:
+        np.concatenate(cropped_images[k:k+10])
+        k=k+10
 
+
+    """
+    print(cropped_images)
+
+
+
+
+    #while z<len(cropped_images):
+    #    concatenate=np.concatenate(cropped_images[z:10])
+    #    z=z+10;
 
    #ID=files[subject]
     #subject_hash=get_subject_hash(ID)
@@ -561,7 +580,7 @@ def main(subject, zone, normalize):
      #   cropped_images.append(crop(y,zones.zone_crop_list[zone][0]))
 
     print(len(threat_labels))
-    print(cropped_images)
+    print(len(cropped_images))
    # m = Model()
     #m.fit(cropped_images, None)
 
