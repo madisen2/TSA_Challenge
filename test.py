@@ -28,10 +28,25 @@ THREAT_LABELS = '/stash/tlab/datasets/2017KaggleTsa/stage1/stage1_labels.csv'
 class Model:
     def fit(self, inputs, outputs):
         self.params=np.linalg.lstsq(inputs,outputs)
+        print(self.params)
         return 0
     def predict(self,inputs):
+        count=0
+        b=[]
+        while count<len(inputs):
+            b.append((self.params*inputs[count]).sum())
+            count=count+1
+
+
         return 0
 #____________________________________________________________________________#
+
+
+def make_csv():
+    with open("maddie.csv","wt") as f:
+        f.write("a,b,c\n")
+        for i in range(10):
+            f.write(f"{i},{i+1},5\n")
 
 def get_subject_hash(infile):
 
@@ -528,61 +543,54 @@ def main(subject, zone, normalize):
     """Used for file framework"""
 
     files=list_files()#open the list of files
-    subject_sample=files[0:10]#create an array of files, sample size 10
-    cropped_images=([])#initialize array
+    #subject_sample=files[0:10]#create an array of files, sample size 10
+    cropped_images=[]#initialize array
     cropped_images_concatenated=[]
     threat_labels=[]#initialize array
 
+    """
     for x in subject_sample:
         #below we loop and load the threat array
         subject_hash=get_subject_hash(x)#returns subject ID
         df=get_subject_labels(THREAT_LABELS,subject_hash)#retrieve threat label
         threat_labels.append(get_subject_zone_label(0,df))#creates array of threat labels
-
-        #below we loop and load the cropped images array
+        images=[]#initializing the array to hold all angle images at given zone
         subject_collection=read_data(x).transpose()
         for y in subject_collection:
-            cropped_images.append([crop(y,zones.zone_crop_list[0][1])])#using zone 0
-            #cropped_images.append(crop(y,zones.zone_crop_list[0][0]))
+            images.append(crop(y,zones.zone_crop_list[0][14]))#using zone 0
+        images=np.concatenate(images,axis=0)
+        cropped_images.append(images)
     """
-    length=len(cropped_images)
-    k=0
+    #below is the code for a single subject, but multiple zones
+    x=files[subject]
+    subject_hash=get_subject_hash(x)#get subject ID
+    df=get_subject_labels(THREAT_LABELS,subject_hash)#get threat labels
+    threat_labels.append(get_subject_zone_label(zone,df))
+    images=[]
+    subject_collection=read_data(x).transpose()
+
+    for y in subject_collection:
+        images.append(crop(y,zones.zone_crop_list[zone][14]))
+    images=np.concatenate(images,axis=0)
+    cropped_images.append(images)
+
+
     count=0
-    cropped_images=np.asarray(cropped_images)
+    length=len(cropped_images)
+
     while count<length:
         cropped_images[count]=cropped_images[count].flatten()
         count=count+1
 
-    while k<length-10:
-        np.concatenate(cropped_images[k:k+10])
-        k=k+10
+    cropped_images=np.asarray(cropped_images)
 
-
-    """
-    print(cropped_images)
-
-
-
-
-    #while z<len(cropped_images):
-    #    concatenate=np.concatenate(cropped_images[z:10])
-    #    z=z+10;
-
-   #ID=files[subject]
-    #subject_hash=get_subject_hash(ID)
-    #subject_collection=read_data(ID).transpose()
-    #threat_subject=get_subject_labels(THREAT_LABELS, ID)
-
-    #for x in subject_collection:
-     #   threat_labels.append(get_subject_zone_label(zone,subject_hash))
-
-    #for y in ID:
-     #   cropped_images.append(crop(y,zones.zone_crop_list[zone][0]))
-
+    print(cropped_images.shape)
     print(len(threat_labels))
     print(len(cropped_images))
-   # m = Model()
-    #m.fit(cropped_images, None)
+    m = Model()
+    m.fit(cropped_images, threat_labels)
+
+    make_csv()
 
     return 0
 
